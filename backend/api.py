@@ -1,6 +1,7 @@
 # Importação das bibliotecas
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import os
 
 # Criação da aplicação Flask
 app = Flask(__name__)
