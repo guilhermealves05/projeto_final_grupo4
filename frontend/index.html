@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TO-DO-LIST Grupo 4</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <style>
+        :root { --main-bg: #f9fafb; --secondary-bg: #ffffff; --card-bg: #ffffff; --text-color: #1f2937; --border-color: #e5e7eb; --accent-color: #4f46e5; }
+        html.dark { --main-bg: #111827; --secondary-bg: #1f2937; --card-bg: #374151; --text-color: #d1d5db; --border-color: #4b5563; }
+        body { background-color: var(--main-bg); color: var(--text-color); font-family: 'Inter', sans-serif; }
+        .sidebar, .modal-content, .task-card, .toast { background-color: var(--card-bg); }
+        .kanban-column-bg { background-color: var(--secondary-bg); }
+        input, textarea, select { background-color: var(--secondary-bg); color: var(--text-color); border: 1px solid var(--border-color); }
+        .kanban-column { min-height: 400px; }
+        .task-card { cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s ease-in-out; }
+        .task-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .dragging { opacity: 0.5; transform: rotate(3deg) !important; }
+        .drag-over { border: 2px dashed var(--accent-color); }
+        .project-item.active { background-color: var(--accent-color); color: white; }
+        .task-overdue { border-left-color: #ef4444 !important; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .skeleton { background-color: #e5e7eb; border-radius: 0.5rem; } html.dark .skeleton { background-color: #4b5563; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; transform: translateY(100px); opacity: 0; transition: all 0.5s cubic-bezier(0.215, 0.61, 0.355, 1); }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background-color: #34d399; color: white; } .toast.error { background-color: #ef4444; color: white; }
+    </style>
+</head>
+<body class="transition-colors duration-300">
+
+    <!-- Seção de Login -->
+    <section id="auth-section" class="flex items-center justify-center min-h-screen p-4">
+        <div class="sidebar p-8 rounded-xl shadow-lg w-full max-w-md">
+            <h1 class="text-3xl font-bold text-center mb-1">TO-DO-LIST Grupo 4</h1>
+            <p class="text-center text-gray-500 dark:text-gray-400 mb-6">Organize seu sucesso.</p>
+            <form id="login-form">
+                <div class="mb-4"><label for="email" class="block text-sm font-medium">Email</label><input type="email" id="email" class="mt-1 w-full px-3 py-2 rounded-md" required></div>
+                <div class="mb-6"><label for="password" class="block text-sm font-medium">Senha</label><input type="password" id="password" class="mt-1 w-full px-3 py-2 rounded-md" required></div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2.5 rounded-md hover:bg-indigo-700 font-semibold transition-colors">Entrar</button>
+                <p id="login-error" class="text-red-500 text-sm mt-4 text-center"></p>
+            </form>
+        </div>
+    </section>
+
+    <!-- Seção Principal -->
+    <main id="app-section" class="hidden h-screen w-full flex">
+        <aside class="sidebar w-80 p-5 flex flex-col shadow-lg border-r border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center mb-4"><h2 id="welcome-message" class="text-xl font-bold"></h2><button id="dark-mode-toggle" class="text-xl px-2 py-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">🌙</button></div>
+            <div id="project-dashboard" class="mb-4 hidden"><p class="text-sm font-medium">Progresso:</p><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mt-1"><div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div></div><p id="progress-text" class="text-xs text-right mt-1">0%</p></div>
+            <nav id="projects-list" class="flex-grow space-y-2 overflow-y-auto"></nav>
+            <form id="add-project-form" class="mt-4 flex gap-2"><input type="text" id="new-project-name" placeholder="Novo projeto..." class="flex-grow w-full px-3 py-2 rounded-md text-sm" required><button type="submit" class="bg-indigo-600 text-white px-3 rounded-md hover:bg-indigo-700 font-bold transition-colors">+</button></form>
+            <button id="logout-button" class="w-full mt-4 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors">Sair</button>
+        </aside>
+        <div id="main-content" class="main-content-bg flex-1 p-8 overflow-auto hidden">
+            <div class="flex justify-between items-center mb-6"><h1 id="project-title" class="text-3xl font-bold"></h1></div>
+            <div id="kanban-board" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+        </div>
+        <div id="empty-state" class="main-content-bg flex-1 p-8 flex items-center justify-center">
+            <div class="text-center"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="mt-2 text-sm font-medium">Sem projeto selecionado</h3><p class="mt-1 text-sm text-gray-500">Selecione um projeto ou crie um novo.</p></div>
+        </div>
+    </main>
+
+    <!-- Modal de Edição -->
+    <div id="edit-task-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="modal-content p-6 rounded-lg shadow-xl w-full max-w-lg">
+            <h2 class="text-2xl font-bold mb-4">Detalhes da Tarefa</h2>
+            <form id="edit-task-form">
+                <input type="hidden" id="edit-task-id">
+                <div class="mb-4"><label for="edit-task-title" class="block text-sm font-medium">Título</label><input type="text" id="edit-task-title" class="mt-1 w-full px-3 py-2 rounded-md" required></div>
+                <div class="mb-4"><label for="edit-task-description" class="block text-sm font-medium">Descrição</label><textarea id="edit-task-description" rows="3" class="mt-1 w-full px-3 py-2 rounded-md"></textarea></div>
+                <div class="mb-4"><label for="edit-task-due-date" class="block text-sm font-medium">Prazo</label><input type="date" id="edit-task-due-date" class="mt-1 w-full px-3 py-2 rounded-md"></div>
+                <div class="flex justify-between items-center mt-6">
+                    <button type="button" id="delete-task-btn" class="text-red-600 hover:text-red-800 font-semibold">Excluir Tarefa</button>
+                    <div><button type="button" id="cancel-edit-btn" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 rounded-md mr-2">Cancelar</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md">Salvar</button></div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const API_URL = 'http://127.0.0.1:5000/api';
+        let currentUser = null, currentProjectId = null, tasksCache = [], draggedTaskElement = null;
+
+        const el = (id) => document.getElementById(id);
+        const authSection = el('auth-section'), appSection = el('app-section'), loginForm = el('login-form'), loginError = el('login-error');
+        const welcomeMessage = el('welcome-message'), logoutButton = el('logout-button'), projectsList = el('projects-list');
+        const addProjectForm = el('add-project-form'), projectTitle = el('project-title'), kanbanBoard = el('kanban-board');
+        const mainContent = el('main-content'), emptyState = el('empty-state'), projectDashboard = el('project-dashboard');
+        const progressBar = el('progress-bar'), progressText = el('progress-text'), darkModeToggle = el('dark-mode-toggle');
+        
+        const taskModal = el('edit-task-modal'), editForm = el('edit-task-form'), cancelBtn = el('cancel-edit-btn'), deleteBtn = el('delete-task-btn');
+
+        const showToast = (message, type = 'success') => {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 500); }, 3000);
+        };
+
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            darkModeToggle.textContent = '☀️';
+        }
+        darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            darkModeToggle.textContent = isDark ? '☀️' : '🌙';
+        });
+
+        const updateDashboard = () => {
+            const total = tasksCache.length;
+            if (total === 0) { projectDashboard.classList.add('hidden'); return; }
+            const completed = tasksCache.filter(t => t.status === 'done').length;
+            const percentage = Math.round((completed / total) * 100);
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${percentage}% (${completed} de ${total})`;
+            projectDashboard.classList.remove('hidden');
+        };
+
+        const renderProjects = (projects) => {
+            projectsList.innerHTML = '';
+            if (projects.length === 0) { projectsList.innerHTML = `<p class="text-sm text-gray-500 p-2">Crie seu primeiro projeto abaixo.</p>`; return; }
+            projects.forEach(p => {
+                const projectEl = document.createElement('div');
+                projectEl.className = `project-item group flex justify-between items-center p-2 rounded-md hover:bg-indigo-100 dark:hover:bg-gray-700 cursor-pointer ${p.id === currentProjectId ? 'active' : ''}`;
+                projectEl.dataset.projectId = p.id;
+                projectEl.innerHTML = `<span>${p.name}</span><button data-project-id="${p.id}" class="delete-project-btn text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg></button>`;
+                projectsList.appendChild(projectEl);
+            });
+        };
+
+        const renderKanban = () => {
+            kanbanBoard.innerHTML = `<div class="kanban-column-bg rounded-xl p-4"><div class="space-y-4"><div class="skeleton h-20 w-full"></div><div class="skeleton h-16 w-full"></div></div></div><div class="kanban-column-bg rounded-xl p-4"><div class="space-y-4"><div class="skeleton h-12 w-full"></div></div></div><div class="kanban-column-bg rounded-xl p-4"><div class="space-y-4"><div class="skeleton h-24 w-full"></div></div></div>`;
+            setTimeout(() => {
+                kanbanBoard.innerHTML = '';
+                const statuses = { todo: { name: 'A Fazer 📝', tasks: [] }, inprogress: { name: 'Em Andamento ⚙️', tasks: [] }, done: { name: 'Concluído ✅', tasks: [] } };
+                tasksCache.forEach(task => { if (statuses[task.status]) statuses[task.status].tasks.push(task); });
+                for (const statusKey in statuses) {
+                    const statusInfo = statuses[statusKey];
+                    const columnEl = document.createElement('div');
+                    columnEl.className = 'kanban-column-bg rounded-xl p-4';
+                    // *** CORREÇÃO APLICADA AQUI: removido o texto "Vazio..." ***
+                    const tasksHtml = statusInfo.tasks.length > 0 ? statusInfo.tasks.map(task => {
+                        const today = new Date().setHours(0,0,0,0);
+                        const dueDate = task.due_date ? new Date(task.due_date.replace(/-/g, '\/')).setHours(0,0,0,0) : null;
+                        const isOverdue = dueDate && dueDate < today && task.status !== 'done';
+                        return `<div class="task-card p-3 rounded-md shadow fade-in ${isOverdue ? 'task-overdue' : ''}" draggable="true" data-task-id="${task.id}"><p>${task.title}</p>${task.due_date ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Prazo: ${new Date(task.due_date.replace(/-/g, '\/')).toLocaleDateString()}</p>` : ''}</div>`;
+                    }).join('') : ``; // A coluna simplesmente fica vazia
+                    columnEl.innerHTML = `<h3 class="font-bold text-lg mb-4">${statusInfo.name}</h3><div class="kanban-column space-y-4" data-status="${statusKey}">${tasksHtml}</div>${statusKey === 'todo' ? `<form class="add-task-form mt-4"><input type="text" placeholder="+ Adicionar tarefa" class="w-full px-3 py-2 border rounded-md text-sm" required></form>` : ''}`;
+                    kanbanBoard.appendChild(columnEl);
+                }
+            }, 300);
+        };
+        
+        const fetchAndRenderTasks = async (projectId) => { if (!projectId) return; const response = await fetch(`${API_URL}/projects/${projectId}/tasks`); tasksCache = await response.json(); renderKanban(); updateDashboard(); };
+        const fetchAndRenderProjects = async () => { try { const response = await fetch(`${API_URL}/projects`); if (!response.ok) throw new Error('Falha ao buscar projetos'); const projects = await response.json(); renderProjects(projects); } catch (error) { console.error(error); } };
+        
+        projectsList.addEventListener('click', async (e) => {
+            const projectItem = e.target.closest('.project-item');
+            const deleteButton = e.target.closest('.delete-project-btn');
+            if (deleteButton) { e.stopPropagation(); const projectId = deleteButton.dataset.projectId; if (confirm('Excluir este projeto e todas as suas tarefas?')) { await fetch(`${API_URL}/projects/${projectId}`, { method: 'DELETE' }); showToast('Projeto deletado!', 'success'); if (currentProjectId == projectId) { mainContent.classList.add('hidden'); emptyState.classList.remove('hidden'); projectDashboard.classList.add('hidden'); currentProjectId = null; } await fetchAndRenderProjects(); } return; }
+            if (projectItem) { currentProjectId = parseInt(projectItem.dataset.projectId); projectTitle.textContent = projectItem.querySelector('span').textContent; emptyState.classList.add('hidden'); mainContent.classList.remove('hidden'); document.querySelectorAll('.project-item').forEach(el => el.classList.remove('active')); projectItem.classList.add('active'); await fetchAndRenderTasks(currentProjectId); }
+        });
+
+        addProjectForm.addEventListener('submit', async (e) => { e.preventDefault(); const input = el('new-project-name'); const name = input.value.trim(); if (!name) return; await fetch(`${API_URL}/projects`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }); input.value = ''; showToast('Projeto criado!', 'success'); await fetchAndRenderProjects(); });
+        
+        kanbanBoard.addEventListener('click', (e) => { if (e.target.closest('.task-card')) { openEditModal(parseInt(e.target.closest('.task-card').dataset.taskId)); } });
+        kanbanBoard.addEventListener('submit', async (e) => { if (e.target.classList.contains('add-task-form')) { e.preventDefault(); const input = e.target.querySelector('input'); const title = input.value.trim(); if (!title || !currentProjectId) return; await fetch(`${API_URL}/tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, project_id: currentProjectId }) }); input.value = ''; await fetchAndRenderTasks(currentProjectId); } });
+        kanbanBoard.addEventListener('dragstart', e => { if (e.target.classList.contains('task-card')) { draggedTaskElement = e.target; setTimeout(() => e.target.classList.add('dragging'), 0); } });
+        kanbanBoard.addEventListener('dragend', e => { if (draggedTaskElement) { draggedTaskElement.classList.remove('dragging'); draggedTaskElement = null; } });
+        kanbanBoard.addEventListener('dragover', e => { e.preventDefault(); const column = e.target.closest('.kanban-column'); if (column) column.classList.add('drag-over'); });
+        kanbanBoard.addEventListener('dragleave', e => { const column = e.target.closest('.kanban-column'); if(column) column.classList.remove('drag-over'); });
+        kanbanBoard.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const column = e.target.closest('.kanban-column');
+            if (column && draggedTaskElement) {
+                column.classList.remove('drag-over');
+                const taskId = draggedTaskElement.dataset.taskId;
+                const newStatus = column.dataset.status;
+                const task = tasksCache.find(t => t.id == taskId);
+                const oldStatus = task.status;
+                if (newStatus === 'done' && oldStatus !== 'done') { const rect = draggedTaskElement.getBoundingClientRect(); confetti({ particleCount: 150, spread: 90, origin: { x: (rect.left + rect.right) / 2 / window.innerWidth, y: (rect.top + rect.bottom) / 2 / window.innerHeight } }); }
+                column.appendChild(draggedTaskElement);
+                task.status = newStatus;
+                updateDashboard();
+                await fetch(`${API_URL}/tasks/${taskId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(task) });
+            }
+        });
+        
+        const openEditModal = (taskId) => { const task = tasksCache.find(t => t.id === taskId); if (!task) return; el('edit-task-id').value = task.id; el('edit-task-title').value = task.title; el('edit-task-description').value = task.description || ''; el('edit-task-due-date').value = task.due_date || ''; taskModal.classList.remove('hidden'); };
+        const closeEditModal = () => { taskModal.classList.add('hidden'); editForm.reset(); };
+        editForm.addEventListener('submit', async (e) => { e.preventDefault(); const taskId = el('edit-task-id').value; const task = tasksCache.find(t => t.id == taskId); const updatedTask = { ...task, title: el('edit-task-title').value, description: el('edit-task-description').value, due_date: el('edit-task-due-date').value || null }; await fetch(`${API_URL}/tasks/${taskId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedTask) }); closeEditModal(); showToast('Tarefa atualizada!', 'success'); await fetchAndRenderTasks(currentProjectId); });
+        deleteBtn.addEventListener('click', async () => { const taskId = el('edit-task-id').value; if (confirm('Excluir esta tarefa?')) { await fetch(`${API_URL}/tasks/${taskId}`, { method: 'DELETE' }); closeEditModal(); showToast('Tarefa deletada.', 'success'); await fetchAndRenderTasks(currentProjectId); } });
+        cancelBtn.addEventListener('click', closeEditModal);
+        
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: el('email').value, password: el('password').value }) });
+                if (!response.ok) throw new Error('Credenciais inválidas.');
+                currentUser = await response.json();
+                authSection.classList.add('hidden');
+                appSection.classList.remove('hidden');
+                welcomeMessage.textContent = `Olá, ${currentUser.name.split(' ')[0]}`;
+                await fetchAndRenderProjects();
+            } catch (error) { loginError.textContent = error.message; }
+        });
+        logoutButton.addEventListener('click', async () => { await fetch(`${API_URL}/logout`, { method: 'POST' }); location.reload(); });
+    });
+    </script>
+</body>
+</html>
+
