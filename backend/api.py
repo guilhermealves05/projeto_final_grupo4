@@ -5,6 +5,9 @@ import os
 
 # Criação da aplicação Flask
 app = Flask(__name__)
+
+# --- CONFIGURAÇÃO DE CORS ---
+# Permite que o front-end (mesmo em um domínio diferente) se comunique com esta API.
 CORS(app)
 
 # --- DADOS MOCKADOS FINAIS (PARA APRESENTAÇÃO INDIVIDUAL) ---
@@ -17,13 +20,15 @@ users = {
 }
 next_user_id = 5
 
+# Somente o professor Reginaldo (user_id: 4) começa com um projeto.
 projects = {
     1: {"id": 1, "name": "Avaliação Final - PW1", "user_id": 4},
 }
 next_project_id = 2
 
+# Somente uma tarefa, no projeto do professor.
 tasks = {
-    1: {"id": 1, "title": "Aprovar os alunos na matéria", "description": "Eles merecem kkkkkkkk", "status": "inprogress", "project_id": 1, "due_date": "2025-09-28"},
+    1: {"id": 1, "title": "Aprovar os alunos na matéria", "description": "Eles fizeram um ótimo trabalho neste projeto!", "status": "inprogress", "project_id": 1, "due_date": "2025-12-15"},
 }
 next_task_id = 2
 # -------------------------------------------------------------------------
@@ -154,6 +159,5 @@ def handle_task(task_id):
         return jsonify({"message": "Tarefa deletada"})
 
 if __name__ == '__main__':
-    # O Render define a variável de ambiente PORT. Se não existir, usamos 5000 para testes locais.
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)

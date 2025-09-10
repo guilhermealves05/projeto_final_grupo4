@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TO-DO-LIST Grupo 4</title>
+    <title>Stellar Projects - Gestor Kanban</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
@@ -30,10 +30,9 @@
 </head>
 <body class="transition-colors duration-300">
 
-    <!-- Seção de Login -->
     <section id="auth-section" class="flex items-center justify-center min-h-screen p-4">
         <div class="sidebar p-8 rounded-xl shadow-lg w-full max-w-md">
-            <h1 class="text-3xl font-bold text-center mb-1">TO-DO-LIST Grupo 4</h1>
+            <h1 class="text-3xl font-bold text-center mb-1">Stellar Projects</h1>
             <p class="text-center text-gray-500 dark:text-gray-400 mb-6">Organize seu sucesso.</p>
             <form id="login-form">
                 <div class="mb-4"><label for="email" class="block text-sm font-medium">Email</label><input type="email" id="email" class="mt-1 w-full px-3 py-2 rounded-md" required></div>
@@ -44,7 +43,6 @@
         </div>
     </section>
 
-    <!-- Seção Principal -->
     <main id="app-section" class="hidden h-screen w-full flex">
         <aside class="sidebar w-80 p-5 flex flex-col shadow-lg border-r border-gray-200 dark:border-gray-700">
             <div class="flex justify-between items-center mb-4"><h2 id="welcome-message" class="text-xl font-bold"></h2><button id="dark-mode-toggle" class="text-xl px-2 py-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">🌙</button></div>
@@ -62,7 +60,6 @@
         </div>
     </main>
 
-    <!-- Modal de Edição -->
     <div id="edit-task-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="modal-content p-6 rounded-lg shadow-xl w-full max-w-lg">
             <h2 class="text-2xl font-bold mb-4">Detalhes da Tarefa</h2>
@@ -81,7 +78,9 @@
     
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const API_URL = 'https://api-kanban-grupo4.onrender.com';
+        // ATENÇÃO: Substitua esta URL pela URL da sua API no Render.com quando fizer o deploy
+        const API_URL = 'http://127.0.0.1:5000/api';
+        
         let currentUser = null, currentProjectId = null, tasksCache = [], draggedTaskElement = null;
 
         const el = (id) => document.getElementById(id);
@@ -145,13 +144,12 @@
                     const statusInfo = statuses[statusKey];
                     const columnEl = document.createElement('div');
                     columnEl.className = 'kanban-column-bg rounded-xl p-4';
-                    // *** CORREÇÃO APLICADA AQUI: removido o texto "Vazio..." ***
                     const tasksHtml = statusInfo.tasks.length > 0 ? statusInfo.tasks.map(task => {
                         const today = new Date().setHours(0,0,0,0);
                         const dueDate = task.due_date ? new Date(task.due_date.replace(/-/g, '\/')).setHours(0,0,0,0) : null;
                         const isOverdue = dueDate && dueDate < today && task.status !== 'done';
                         return `<div class="task-card p-3 rounded-md shadow fade-in ${isOverdue ? 'task-overdue' : ''}" draggable="true" data-task-id="${task.id}"><p>${task.title}</p>${task.due_date ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Prazo: ${new Date(task.due_date.replace(/-/g, '\/')).toLocaleDateString()}</p>` : ''}</div>`;
-                    }).join('') : ``; // A coluna simplesmente fica vazia
+                    }).join('') : ``;
                     columnEl.innerHTML = `<h3 class="font-bold text-lg mb-4">${statusInfo.name}</h3><div class="kanban-column space-y-4" data-status="${statusKey}">${tasksHtml}</div>${statusKey === 'todo' ? `<form class="add-task-form mt-4"><input type="text" placeholder="+ Adicionar tarefa" class="w-full px-3 py-2 border rounded-md text-sm" required></form>` : ''}`;
                     kanbanBoard.appendChild(columnEl);
                 }
@@ -168,7 +166,16 @@
             if (projectItem) { currentProjectId = parseInt(projectItem.dataset.projectId); projectTitle.textContent = projectItem.querySelector('span').textContent; emptyState.classList.add('hidden'); mainContent.classList.remove('hidden'); document.querySelectorAll('.project-item').forEach(el => el.classList.remove('active')); projectItem.classList.add('active'); await fetchAndRenderTasks(currentProjectId); }
         });
 
-        addProjectForm.addEventListener('submit', async (e) => { e.preventDefault(); const input = el('new-project-name'); const name = input.value.trim(); if (!name) return; await fetch(`${API_URL}/projects`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }); input.value = ''; showToast('Projeto criado!', 'success'); await fetchAndRenderProjects(); });
+        addProjectForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = el('new-project-name');
+            const name = input.value.trim();
+            if (!name) return;
+            await fetch(`${API_URL}/projects`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+            input.value = '';
+            showToast('Projeto criado!', 'success');
+            await fetchAndRenderProjects();
+        });
         
         kanbanBoard.addEventListener('click', (e) => { if (e.target.closest('.task-card')) { openEditModal(parseInt(e.target.closest('.task-card').dataset.taskId)); } });
         kanbanBoard.addEventListener('submit', async (e) => { if (e.target.classList.contains('add-task-form')) { e.preventDefault(); const input = e.target.querySelector('input'); const title = input.value.trim(); if (!title || !currentProjectId) return; await fetch(`${API_URL}/tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, project_id: currentProjectId }) }); input.value = ''; await fetchAndRenderTasks(currentProjectId); } });
@@ -216,4 +223,3 @@
     </script>
 </body>
 </html>
-
