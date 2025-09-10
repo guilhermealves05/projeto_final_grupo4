@@ -153,4 +153,6 @@ def handle_task(task_id):
         return jsonify({"message": "Tarefa deletada"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # O Render define a variável de ambiente PORT. Se não existir, usamos 5000 para testes locais.
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
