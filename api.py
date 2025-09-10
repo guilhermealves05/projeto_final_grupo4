@@ -5,44 +5,30 @@ import os
 
 # Criação da aplicação Flask
 app = Flask(__name__)
-
-# Configuração de CORS simplificada para aceitar todas as origens
 CORS(app)
 
-# --- DADOS MOCKADOS FINAIS (PARA APRESENTAÇÃO) ---
+# --- DADOS MOCKADOS ---
 users = {
     1: {"id": 1, "name": "Guilherme Alves", "email": "alves@ifce.edu.br", "password": "123"},
     2: {"id": 2, "name": "Guilherme Monteiro", "email": "monteiro@ifce.edu.br", "password": "123"},
     3: {"id": 3, "name": "Paulo Cosmo", "email": "paulo@ifce.edu.br", "password": "123"},
     4: {"id": 4, "name": "Reginaldo", "email": "reginaldo@ifce.edu.br", "password": "123"}
 }
-next_user_id = 5
-
-projects = {
-    1: {"id": 1, "name": "Avaliação Final - PW1", "user_id": 4},
-}
-next_project_id = 2
-
-tasks = {
-    1: {"id": 1, "title": "Aprovar os alunos na matéria", "description": "Eles fizeram um ótimo trabalho!", "status": "inprogress", "project_id": 1, "due_date": "2025-12-15"},
-}
-next_task_id = 2
-# -------------------------------------------------------------------------
-
+projects = {1: {"id": 1, "name": "Avaliação Final - PW1", "user_id": 4}}
+tasks = {1: {"id": 1, "title": "Aprovar os alunos na matéria", "description": "Eles fizeram um ótimo trabalho!", "status": "inprogress", "project_id": 1, "due_date": "2025-12-15"}}
+next_project_id, next_task_id = 2, 2
 current_session = {"user_id": None}
 
 def get_logged_user_id():
     user_id = current_session.get("user_id")
-    if user_id is None:
-        raise PermissionError("Acesso não autorizado.")
+    if user_id is None: raise PermissionError("Acesso não autorizado.")
     return user_id
 
-# ROTA RAIZ PARA VERIFICAÇÃO DE SAÚDE
+# --- ROTAS ---
 @app.route('/')
 def health_check():
     return jsonify({"status": "healthy", "message": "API do Stellar Projects está no ar!"})
 
-# --- ROTAS DA API (SIMPLIFICADAS, SEM /api) ---
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
@@ -72,15 +58,26 @@ def handle_projects():
         next_project_id += 1
         return jsonify(new_project), 201
 
-@app.route('/projects/<int:project_id>', methods=['DELETE'])
-def delete_project(project_id):
+# --- ATUALIZAÇÃO AQUI: Rota agora aceita PUT para renomear ---
+@app.route('/projects/<int:project_id>', methods=['PUT', 'DELETE'])
+def handle_single_project(project_id):
     logged_user_id = get_logged_user_id()
     if project_id not in projects or projects[project_id]['user_id'] != logged_user_id:
-        return jsonify({"error": "Projeto não encontrado"}), 404
-    tasks_to_delete = [task_id for task_id, task in tasks.items() if task['project_id'] == project_id]
-    for task_id in tasks_to_delete: del tasks[task_id]
-    del projects[project_id]
-    return jsonify({"message": "Projeto deletado."})
+        return jsonify({"error": "Projeto não encontrado ou não autorizado"}), 404
+
+    if request.method == 'PUT':
+        data = request.json
+        new_name = data.get('name')
+        if not new_name or not new_name.strip():
+            return jsonify({"error": "O nome não pode ficar em branco"}), 400
+        projects[project_id]['name'] = new_name.strip()
+        return jsonify(projects[project_id])
+        
+    if request.method == 'DELETE':
+        tasks_to_delete = [task_id for task_id, task in tasks.items() if task['project_id'] == project_id]
+        for task_id in tasks_to_delete: del tasks[task_id]
+        del projects[project_id]
+        return jsonify({"message": "Projeto deletado."})
 
 @app.route('/projects/<int:project_id>/tasks', methods=['GET'])
 def get_tasks_for_project(project_id):

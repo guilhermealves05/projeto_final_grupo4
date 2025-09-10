@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stellar Projects - Gestor Kanban</title>
+    <title>Grupo 4 TO-DO-LIST</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
@@ -30,10 +30,9 @@
 </head>
 <body class="transition-colors duration-300">
 
-    <!-- Seção de Login -->
     <section id="auth-section" class="flex items-center justify-center min-h-screen p-4">
         <div class="sidebar p-8 rounded-xl shadow-lg w-full max-w-md">
-            <h1 class="text-3xl font-bold text-center mb-1">Stellar Projects</h1>
+            <h1 class="text-3xl font-bold text-center mb-1">TO-DO-LIST</h1>
             <p class="text-center text-gray-500 dark:text-gray-400 mb-6">Organize seu sucesso.</p>
             <form id="login-form">
                 <div class="mb-4"><label for="email" class="block text-sm font-medium">Email</label><input type="email" id="email" class="mt-1 w-full px-3 py-2 rounded-md" required></div>
@@ -44,7 +43,6 @@
         </div>
     </section>
 
-    <!-- Seção Principal -->
     <main id="app-section" class="hidden h-screen w-full flex">
         <aside class="sidebar w-80 p-5 flex flex-col shadow-lg border-r border-gray-200 dark:border-gray-700">
             <div class="flex justify-between items-center mb-4"><h2 id="welcome-message" class="text-xl font-bold"></h2><button id="dark-mode-toggle" class="text-xl px-2 py-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">🌙</button></div>
@@ -62,7 +60,6 @@
         </div>
     </main>
 
-    <!-- Modal de Edição -->
     <div id="edit-task-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="modal-content p-6 rounded-lg shadow-xl w-full max-w-lg">
             <h2 class="text-2xl font-bold mb-4">Detalhes da Tarefa</h2>
@@ -81,10 +78,7 @@
     
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // *** AQUI ESTÁ A CORREÇÃO MAIS IMPORTANTE ***
-        // Substitua esta URL pela URL da sua API no Render.com
         const API_URL = 'https://api-kanban-grupo4.onrender.com';
-        
         let currentUser = null, currentProjectId = null, tasksCache = [], draggedTaskElement = null;
 
         const el = (id) => document.getElementById(id);
@@ -93,7 +87,6 @@
         const addProjectForm = el('add-project-form'), projectTitle = el('project-title'), kanbanBoard = el('kanban-board');
         const mainContent = el('main-content'), emptyState = el('empty-state'), projectDashboard = el('project-dashboard');
         const progressBar = el('progress-bar'), progressText = el('progress-text'), darkModeToggle = el('dark-mode-toggle');
-        
         const taskModal = el('edit-task-modal'), editForm = el('edit-task-form'), cancelBtn = el('cancel-edit-btn'), deleteBtn = el('delete-task-btn');
 
         const showToast = (message, type = 'success') => {
@@ -133,7 +126,17 @@
                 const projectEl = document.createElement('div');
                 projectEl.className = `project-item group flex justify-between items-center p-2 rounded-md hover:bg-indigo-100 dark:hover:bg-gray-700 cursor-pointer ${p.id === currentProjectId ? 'active' : ''}`;
                 projectEl.dataset.projectId = p.id;
-                projectEl.innerHTML = `<span>${p.name}</span><button data-project-id="${p.id}" class="delete-project-btn text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg></button>`;
+                projectEl.innerHTML = `
+                    <span class="flex-grow">${p.name}</span>
+                    <div class="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button data-project-id="${p.id}" data-project-name="${p.name}" class="edit-project-btn text-gray-400 hover:text-indigo-500 p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>
+                        </button>
+                        <button data-project-id="${p.id}" class="delete-project-btn text-gray-400 hover:text-red-500 p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16"><path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0"/></svg>
+                        </button>
+                    </div>
+                `;
                 projectsList.appendChild(projectEl);
             });
         };
@@ -166,7 +169,24 @@
         projectsList.addEventListener('click', async (e) => {
             const projectItem = e.target.closest('.project-item');
             const deleteButton = e.target.closest('.delete-project-btn');
+            const editButton = e.target.closest('.edit-project-btn');
+
             if (deleteButton) { e.stopPropagation(); const projectId = deleteButton.dataset.projectId; if (confirm('Excluir este projeto e todas as suas tarefas?')) { await fetch(`${API_URL}/projects/${projectId}`, { method: 'DELETE' }); showToast('Projeto deletado!', 'success'); if (currentProjectId == projectId) { mainContent.classList.add('hidden'); emptyState.classList.remove('hidden'); projectDashboard.classList.add('hidden'); currentProjectId = null; } await fetchAndRenderProjects(); } return; }
+            
+            if (editButton) {
+                e.stopPropagation();
+                const projectId = editButton.dataset.projectId;
+                const currentName = editButton.dataset.projectName;
+                const newName = prompt("Digite o novo nome para o projeto:", currentName);
+                if (newName && newName.trim() !== '' && newName !== currentName) {
+                    await fetch(`${API_URL}/projects/${projectId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName.trim() }) });
+                    showToast('Projeto renomeado!', 'success');
+                    await fetchAndRenderProjects();
+                    if (currentProjectId == projectId) { projectTitle.textContent = newName.trim(); }
+                }
+                return;
+            }
+
             if (projectItem) { currentProjectId = parseInt(projectItem.dataset.projectId); projectTitle.textContent = projectItem.querySelector('span').textContent; emptyState.classList.add('hidden'); mainContent.classList.remove('hidden'); document.querySelectorAll('.project-item').forEach(el => el.classList.remove('active')); projectItem.classList.add('active'); await fetchAndRenderTasks(currentProjectId); }
         });
 
@@ -211,7 +231,7 @@
                 appSection.classList.remove('hidden');
                 welcomeMessage.textContent = `Olá, ${currentUser.name.split(' ')[0]}`;
                 await fetchAndRenderProjects();
-            } catch (error) { loginError.textContent = "Falha ao conectar ao servidor. Tente novamente mais tarde."; console.error(error); }
+            } catch (error) { loginError.textContent = "Falha ao conectar ao servidor. Verifique se a API está online e tente novamente."; console.error(error); }
         });
         logoutButton.addEventListener('click', async () => { await fetch(`${API_URL}/logout`, { method: 'POST' }); location.reload(); });
     });
